@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Import {{ title }} | Smart Office AI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h3 mb-2">Import {{ title }}</h1>
+        {% if record_type == "student" %}
+          <p class="muted">Required columns: <code>roll_number</code>, <code>full_name</code>, <code>department</code>.</p>
+          <p class="small muted">Optional: email, phone, class_name, marks, attendance, fees_paid. Existing roll numbers are skipped.</p>
+        {% else %}
+          <p class="muted">Required columns: <code>full_name</code>, <code>position</code>.</p>
+          <p class="small muted">Optional: email, phone, years_experience, skills, status, interview_date, interview_notes. Matching email and position records are skipped.</p>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <label class="form-label" for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+          {{ form.file }}
+          {% for error in form.file.errors %}<div class="text-danger small mt-2">{{ error }}</div>{% endfor %}
+          <div class="small muted mt-2">CSV or XLSX, up to 10 MB and 5,000 rows.</div>
+          <button class="btn btn-primary mt-3" type="submit">Upload and import</button>
+          {% if record_type == "student" %}
+            <a class="btn btn-outline-secondary mt-3" href="{% url 'student_list' %}">Back</a>
+          {% else %}
+            <a class="btn btn-outline-secondary mt-3" href="{% url 'candidate_list' %}">Back</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% if result %}
+      <div class="alert alert-info mt-3">
+        {{ result.created }} created; {{ result.skipped }} skipped; {{ result.errors|length }} row(s) reported.
+        {% if result.errors %}
+          <ul class="small mb-0 mt-2">
+          {% for error in result.errors|slice:":50" %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

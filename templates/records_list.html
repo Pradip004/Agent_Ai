@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | Smart Office AI{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div>
+    <h1 class="h3 mb-1">{{ title }}</h1>
+    <p class="muted mb-0">Add a record individually or import a CSV/XLSX file.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if record_type == "student" %}
+      <a class="btn btn-outline-primary" href="{% url 'student_import' %}">Import file</a>
+      <a class="btn btn-primary" href="{% url 'student_add' %}">Add student</a>
+    {% else %}
+      <a class="btn btn-outline-primary" href="{% url 'candidate_import' %}">Import file</a>
+      <a class="btn btn-primary" href="{% url 'candidate_add' %}">Add candidate</a>
+    {% endif %}
+  </div>
+</div>
+<div class="table-responsive card shadow-sm">
+  <table class="table table-striped align-middle mb-0">
+    {% if record_type == "student" %}
+      <thead><tr><th>Roll number</th><th>Name</th><th>Department</th><th>Class</th><th>Marks</th><th>Attendance</th><th>Fees</th></tr></thead>
+      <tbody>
+      {% for record in records %}
+        <tr>
+          <td>{{ record.roll_number }}</td><td>{{ record.full_name }}</td>
+          <td>{{ record.department }}</td><td>{{ record.class_name|default:"—" }}</td>
+          <td>{{ record.marks }}</td><td>{{ record.attendance }}%</td>
+          <td>{% if record.fees_paid %}Paid{% else %}Pending{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-center muted py-4">No student records yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    {% else %}
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Position</th><th>Experience</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for record in records %}
+        <tr>
+          <td>{{ record.full_name }}</td><td>{{ record.email|default:"—" }}</td>
+          <td>{{ record.phone|default:"—" }}</td><td>{{ record.position }}</td>
+          <td>{{ record.years_experience }} years</td><td>{{ record.get_status_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-center muted py-4">No candidate records yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    {% endif %}
+  </table>
+</div>
+{% endblock %}

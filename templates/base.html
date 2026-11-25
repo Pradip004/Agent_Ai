@@ -25,16 +25,11 @@
 <nav class="navbar navbar-expand-lg navbar-light">
   <div class="container-fluid px-lg-5">
     <a class="navbar-brand" href="{% url 'ask_ai' %}">Smart Office AI</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="mainNavigation">
-    <ul class="navbar-nav ms-auto flex-row flex-wrap gap-lg-3">
-      <li class="nav-item"><a class="nav-link" href="{% url 'ask_ai' %}">Ask AI</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'candidate_list' %}">Candidates</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Students</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'student_add' %}">Add / Import Students</a></li>
-    </ul>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <a class="nav-link" href="{% url 'student_list' %}">Students</a>
+      <a class="nav-link" href="{% url 'candidate_list' %}">Candidates</a>
+      <a class="nav-link small" href="{% url 'ask_ai' %}">Assistant</a>
+      <span class="small muted">OpenAI-powered assistant</span>
     </div>
   </div>
 </nav>

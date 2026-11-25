@@ -3,6 +3,26 @@ from django import forms
 from .models import Candidate, Student
 
 
+class StudentForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = [
+            "roll_number", "full_name", "email", "phone", "department",
+            "class_name", "marks", "attendance", "fees_paid",
+        ]
+        labels = {"class_name": "Class", "fees_paid": "Fees paid"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs["class"] = (
+                "form-check-input" if name == "fees_paid" else "form-control"
+            )
+        self.fields["roll_number"].error_messages["unique"] = (
+            "A student with this roll number already exists."
+        )
+
+
 class CandidateForm(forms.ModelForm):
     class Meta:
         model = Candidate
@@ -33,36 +53,22 @@ class CandidateForm(forms.ModelForm):
         return resume
 
 
-class StudentForm(forms.ModelForm):
-    class Meta:
-        model = Student
-        fields = ["roll_number", "full_name", "email", "phone", "department",
-                  "class_name", "marks", "attendance", "fees_paid"]
-        labels = {"class_name": "Class", "fees_paid": "Fees paid"}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            field.widget.attrs["class"] = "form-check-input" if name == "fees_paid" else "form-control"
-        self.fields["roll_number"].error_messages["unique"] = (
-            "A student with this roll number already exists.")
-
-
-class StudentImportForm(forms.Form):
-    SUPPORTED_FILE_TYPES = (".xlsx", ".csv", ".pdf", ".docx", ".txt", ".md", ".json")
-
-    file = forms.FileField(label="Student details file", widget=forms.ClearableFileInput(attrs={
-        "class": "form-control", "accept": ", ".join(SUPPORTED_FILE_TYPES),
-    }))
+class RecordImportForm(forms.Form):
+    file = forms.FileField(
+        label="Details file",
+        widget=forms.ClearableFileInput(attrs={
+            "class": "form-control",
+            "accept": ".csv,.xlsx",
+        }),
+    )
 
     def clean_file(self):
-        f = self.cleaned_data["file"]
-        if not f.name.lower().endswith(self.SUPPORTED_FILE_TYPES):
-            raise forms.ValidationError(
-                "Upload an XLSX, CSV, PDF, DOCX, TXT, MD, or JSON file.")
-        if f.size > 10 * 1024 * 1024:
+        uploaded_file = self.cleaned_data["file"]
+        if not uploaded_file.name.lower().endswith((".csv", ".xlsx")):
+            raise forms.ValidationError("Upload a CSV or XLSX file.")
+        if uploaded_file.size > 10 * 1024 * 1024:
             raise forms.ValidationError("File must be 10 MB or smaller.")
-        return f
+        return uploaded_file
 
 
 class AskAIForm(forms.Form):
@@ -70,12 +76,22 @@ class AskAIForm(forms.Form):
         ".pdf", ".docx", ".txt", ".md", ".csv", ".json", ".html", ".xml", ".xlsx",
     )
 
-    question = forms.CharField(required=False, max_length=300, widget=forms.Textarea(attrs={
-        "rows": 2, "class": "form-control",
-        "placeholder": "e.g. Find Python developers with 3+ years of experience"}))
-    document = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs={
-        "class": "form-control", "accept": ", ".join(SUPPORTED_DOCUMENT_TYPES),
-    }))
+    question = forms.CharField(
+        required=False,
+        max_length=4000,
+        widget=forms.Textarea(attrs={
+            "rows": 4,
+            "class": "form-control",
+            "placeholder": "Ask OpenAI anything, or ask about an attached document",
+        }),
+    )
+    document = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "class": "form-control",
+            "accept": ", ".join(SUPPORTED_DOCUMENT_TYPES),
+        }),
+    )
 
     def clean_document(self):
         document = self.cleaned_data.get("document")
@@ -85,7 +101,8 @@ class AskAIForm(forms.Form):
             raise forms.ValidationError("Document must be 10 MB or smaller.")
         if not document.name.lower().endswith(self.SUPPORTED_DOCUMENT_TYPES):
             raise forms.ValidationError(
-                "Upload a PDF, DOCX, TXT, MD, CSV, JSON, HTML, XML, or XLSX document.")
+                "Upload a PDF, DOCX, TXT, MD, CSV, JSON, HTML, XML, or XLSX document."
+            )
         return document
 
     def clean(self):

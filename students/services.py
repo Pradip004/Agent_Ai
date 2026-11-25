@@ -7,18 +7,22 @@ from zipfile import BadZipFile
 import pandas as pd
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
-from django.forms.models import model_to_dict
 from lxml.etree import XMLSyntaxError
 from openpyxl.utils.exceptions import InvalidFileException
 from pypdf import PdfReader
 from pypdf.errors import FileNotDecryptedError, PdfReadError
 
-from .forms import StudentForm
+from .forms import CandidateForm, StudentForm
 from .models import Candidate, Student
 
 REQUIRED_COLUMNS = ["roll_number", "full_name", "department"]
 OPTIONAL_COLUMNS = ["email", "phone", "class_name", "marks", "attendance", "fees_paid"]
 ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+CANDIDATE_REQUIRED_COLUMNS = ["full_name", "position"]
+CANDIDATE_COLUMNS = CANDIDATE_REQUIRED_COLUMNS + [
+    "email", "phone", "years_experience", "skills", "status",
+    "interview_date", "interview_notes",
+]
 MAX_IMPORT_ROWS = 5000
 TRUE_WORDS = {"true", "yes", "y", "1", "paid"}
 FALSE_WORDS = {"false", "no", "n", "0", "pending", "unpaid"}
@@ -33,6 +37,12 @@ IMPORT_ALIASES = {
     "marks": {"marks", "mark", "score", "percentage"},
     "attendance": {"attendance", "attendancepercentage"},
     "fees_paid": {"feespaid", "fees", "feestatus", "paymentstatus"},
+    "position": {"position", "jobtitle", "role"},
+    "years_experience": {"yearsexperience", "experience", "experienceyears"},
+    "skills": {"skills", "skill"},
+    "status": {"status", "applicationstatus"},
+    "interview_date": {"interviewdate"},
+    "interview_notes": {"interviewnotes", "notes"},
 }
 
 
@@ -98,6 +108,7 @@ class ImportFileError(Exception):
 class ImportResult:
     created: int = 0
     updated: int = 0
+    skipped: int = 0
     errors: list = field(default_factory=list)
 
 
@@ -221,6 +232,8 @@ def _document_rows(uploaded_file):
 
 
 def import_students_from_file(uploaded_file):
+    if not uploaded_file.name.lower().endswith((".csv", ".xlsx")):
+        raise ImportFileError("Upload a CSV or XLSX file.")
     try:
         columns, rows = _document_rows(uploaded_file)
     except (BadZipFile, FileNotDecryptedError, InvalidFileException, PackageNotFoundError,
@@ -253,9 +266,12 @@ def import_students_from_file(uploaded_file):
 
         instance = Student.objects.filter(roll_number=roll).first()
         if instance:
-            data = model_to_dict(instance, fields=ALL_COLUMNS)
-        else:
-            data = {"marks": "0", "attendance": "0", "fees_paid": False}
+            result.skipped += 1
+            result.errors.append(
+                f"Row {index + 2}: roll number {roll} already exists; skipped."
+            )
+            continue
+        data = {"marks": "0", "attendance": "0", "fees_paid": False}
 
         fees_error = False
         for column, value in cells.items():
@@ -275,15 +291,68 @@ def import_students_from_file(uploaded_file):
         if fees_error:
             result.errors.append(f"Row {index + 2}: fees_paid must be Yes/No/Paid/Pending.")
             continue
-        form = StudentForm(data, instance=instance)
+        form = StudentForm(data)
         if form.is_valid():
             form.save()
-            if instance:
-                result.updated += 1
-            else:
-                result.created += 1
+            result.created += 1
         else:
             problems = "; ".join(f"{n}: {' '.join(e)}" for n, e in form.errors.items())
+            result.errors.append(f"Row {index + 2}: {problems}")
+    return result
+
+
+def import_candidates_from_file(uploaded_file):
+    if not uploaded_file.name.lower().endswith((".csv", ".xlsx")):
+        raise ImportFileError("Upload a CSV or XLSX file.")
+    try:
+        columns, rows = _document_rows(uploaded_file)
+    except (BadZipFile, FileNotDecryptedError, InvalidFileException, PackageNotFoundError,
+            PdfReadError, UnicodeDecodeError, XMLSyntaxError, pd.errors.EmptyDataError,
+            pd.errors.ParserError, ValueError, KeyError) as exc:
+        raise ImportFileError(
+            "Could not read the file. Check that it is a valid CSV or XLSX document."
+        ) from exc
+
+    canonical_columns = [_canonical_column(column) for column in columns]
+    missing = [column for column in CANDIDATE_REQUIRED_COLUMNS
+               if column not in canonical_columns]
+    if missing:
+        raise ImportFileError(
+            "Missing required column(s): " + ", ".join(missing)
+            + ". Required fields are full name and position."
+        )
+    if len(rows) > MAX_IMPORT_ROWS:
+        raise ImportFileError(f"Too many rows (maximum {MAX_IMPORT_ROWS}).")
+
+    result = ImportResult()
+    for index, values in enumerate(rows):
+        data = {
+            "years_experience": "0",
+            "status": Candidate.ApplicationStatus.NEW,
+        }
+        for column, value in zip(canonical_columns, values):
+            if column in CANDIDATE_COLUMNS:
+                cleaned = _clean_cell(column, value)
+                if cleaned:
+                    data[column] = cleaned.lower() if column == "status" else cleaned
+
+        email = data.get("email", "").strip()
+        position = data.get("position", "").strip()
+        if email and Candidate.objects.filter(
+                email__iexact=email, position__iexact=position).exists():
+            result.skipped += 1
+            result.errors.append(
+                f"Row {index + 2}: candidate {email} for {position} already exists; skipped."
+            )
+            continue
+
+        form = CandidateForm(data)
+        if form.is_valid():
+            form.save()
+            result.created += 1
+        else:
+            problems = "; ".join(f"{name}: {' '.join(errors)}"
+                                 for name, errors in form.errors.items())
             result.errors.append(f"Row {index + 2}: {problems}")
     return result
 

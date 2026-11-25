@@ -20,3 +20,5 @@ services:
         generateValue: true
       - key: DJANGO_DEBUG
         value: "False"
+      - key: OPENAI_API_KEY
+        sync: false

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | Smart Office AI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h3 mb-4">{{ title }}</h1>
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="mb-3 {% if field.name == 'fees_paid' %}form-check{% endif %}">
+              {% if field.name == "fees_paid" %}
+                {{ field }}
+                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% else %}
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+              {% endif %}
+              {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          {% for error in form.non_field_errors %}<div class="text-danger small mb-3">{{ error }}</div>{% endfor %}
+          <button class="btn btn-primary" type="submit">Save details</button>
+          {% if record_type == "student" %}
+            <a class="btn btn-outline-secondary" href="{% url 'student_list' %}">Cancel</a>
+          {% else %}
+            <a class="btn btn-outline-secondary" href="{% url 'candidate_list' %}">Cancel</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
