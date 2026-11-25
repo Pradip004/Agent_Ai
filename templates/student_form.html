@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <div class="card shadow-sm"><div class="card-body p-4">
+    <h4 class="mb-3">{{ title }}</h4>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3 {% if field.name == 'fees_paid' %}form-check{% endif %}">
+          {% if field.name == 'fees_paid' %}
+            {{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% else %}
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+          {% endif %}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button class="btn btn-primary">Save</button>
+      <a class="btn btn-secondary" href="{% url 'dashboard' %}">Cancel</a>
+    </form>
+  </div></div>
+</div></div>
+{% if title == "Add Student" %}
+<div class="row justify-content-center mt-4"><div class="col-lg-7">
+  <section class="card shadow-sm"><div class="card-body p-4">
+    <h4 class="mb-2">Import student details</h4>
+    <p class="muted">Upload one file to add or update multiple students. Required fields: {{ required|join:", " }}.</p>
+    <p class="small muted">Supported: XLSX, CSV, PDF, DOCX, TXT, MD, JSON · up to 10 MB. PDFs must contain selectable text; scanned PDFs need OCR.</p>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="import">
+      {{ import_form.file }}
+      {% for error in import_form.file.errors %}<div class="text-danger small mt-2">{{ error }}</div>{% endfor %}
+      <button class="btn btn-outline-primary mt-3" type="submit">Upload and import</button>
+    </form>
+    {% if result %}
+      <div class="alert alert-info mt-3 mb-0">
+        <p class="mb-1">{{ result.created }} created, {{ result.updated }} updated, {{ result.errors|length }} skipped.</p>
+        {% if result.errors %}
+          <ul class="small mb-0">{% for error in result.errors|slice:":30" %}<li>{{ error }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div></section>
+</div></div>
+{% endif %}
+{% endblock %}

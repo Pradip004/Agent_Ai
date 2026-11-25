@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+  {% block title %}Ask AI | Smart Office AI{% endblock %}
+  {% block content %}
+  <style>
+    .ask-layout { display: grid; grid-template-columns: minmax(220px, 270px) minmax(0, 1fr); gap: 1.5rem; max-width: 1440px; margin: 0 auto; align-items: start; }
+    .history-sidebar { padding: 1rem; position: sticky; top: 1rem; }
+    .history-list { max-height: 65vh; overflow-y: auto; }
+    .history-item { width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+    .chat-shell { max-width: none; min-width: 0; }
+    @media (max-width: 767.98px) {
+      .ask-layout { grid-template-columns: 1fr; }
+      .history-sidebar { position: static; }
+      .history-list { max-height: 220px; }
+    }
+  </style>
+  <div class="ask-layout">
+    <aside class="history-sidebar card" aria-label="Search history">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 mb-0">Search history</h2>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'ask_ai' %}">New search</a>
+      </div>
+      <div class="history-list">
+        {% for turn in history %}
+          {% if turn.filters %}
+            <form method="post" class="mb-2">
+              {% csrf_token %}
+              <button class="btn btn-light history-item" type="submit" name="load_history" value="{{ forloop.counter0 }}">
+                <span class="d-block small">{{ turn.question|truncatechars:72 }}</span>
+                {% if turn.filename %}<span class="d-block small muted text-truncate">{{ turn.filename }}</span>{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <div class="btn btn-light history-item mb-2">
+              <span class="d-block small">{{ turn.question|truncatechars:72 }}</span>
+            </div>
+          {% endif %}
+        {% empty %}
+          <p class="small muted mb-0">Your recent searches will appear here.</p>
+        {% endfor %}
+      </div>
+      {% if history %}
+        <form method="post" class="border-top pt-2 mt-2">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-link text-decoration-none muted px-0" name="clear_history" value="1">Clear history</button>
+        </form>
+      {% endif %}
+    </aside>
+
+  <div class="chat-shell">
+    <div class="text-center py-4 py-lg-5">
+      <div class="badge rounded-pill text-bg-light border px-3 py-2 mb-3">AI-powered office search</div>
+      <h1 class="display-6 fw-semibold">What would you like to find?</h1>
+      <p class="muted mb-0">Search candidate or student records in plain language, or attach a document to search from its contents.</p>
+    </div>
+
+    {% if results != None %}
+      {% for warning in warnings %}<div class="alert alert-warning">{{ warning }}</div>{% endfor %}
+      {% if record_type == "candidate" %}
+        <section class="card shadow-sm mb-4">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div><h2 class="h5 mb-1">Matching candidates</h2><span class="muted">{{ results|length }} result{{ results|length|pluralize }}</span></div>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'candidate_add' %}">Add candidate</a>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead><tr><th>Name</th><th>Position</th><th>Experience</th><th>Skills</th><th>Status</th><th>Interview</th></tr></thead>
+                <tbody>
+                {% for candidate in results %}
+                  <tr>
+                    <td><a href="{% url 'candidate_edit' candidate.pk %}" class="fw-semibold text-decoration-none">{{ candidate.full_name }}</a><div class="small muted">{{ candidate.email }}{% if candidate.phone %} · {{ candidate.phone }}{% endif %}</div></td>
+                    <td>{{ candidate.position }}</td><td>{{ candidate.years_experience }} yrs</td>
+                    <td>{{ candidate.skills|truncatechars:70|default:"—" }}</td>
+                    <td><span class="badge text-bg-light border">{{ candidate.get_status_display }}</span></td>
+                    <td>{{ candidate.interview_date|date:"M j, Y"|default:"—" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="6" class="text-center muted py-4">No matching candidates. Try changing your search.</td></tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      {% else %}
+        <section class="card shadow-sm mb-4">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div><h2 class="h5 mb-1">Matching students</h2><span class="muted">{{ results|length }} result{{ results|length|pluralize }}</span></div>
+              <div>
+                <a class="btn btn-sm btn-success" href="{% url 'export_report' 'xlsx' %}?search={{ active_history_index }}">Excel</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'export_report' 'docx' %}?search={{ active_history_index }}">Word</a>
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'export_report' 'pdf' %}?search={{ active_history_index }}">PDF</a>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead><tr><th>Roll No</th><th>Name</th><th>Department</th><th>Class</th><th>Marks</th><th>Attendance</th><th>Fees</th></tr></thead>
+                <tbody>
+                {% for s in results %}
+                  <tr><td>{{ s.roll_number }}</td><td>{{ s.full_name }}</td><td>{{ s.department }}</td><td>{{ s.class_name }}</td><td>{{ s.marks }}</td><td>{{ s.attendance }}%</td><td>{% if s.fees_paid %}Paid{% else %}Pending{% endif %}</td></tr>
+                {% empty %}
+                  <tr><td colspan="7" class="text-center muted py-4">No matching students.</td></tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      {% endif %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-body p-2 p-lg-3">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <label class="visually-hidden" for="{{ form.question.id_for_label }}">Ask about candidates or students</label>
+          {{ form.question }}
+          {% for error in form.question.errors %}<div class="text-danger small px-2 pt-2">{{ error }}</div>{% endfor %}
+          {% for error in form.non_field_errors %}<div class="text-danger small px-2 pt-2">{{ error }}</div>{% endfor %}
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-2 pt-2">
+            <label class="small muted d-flex align-items-center gap-2 mb-0">
+              <span>Attach a document</span>{{ form.document }}
+            </label>
+            <button class="btn btn-primary px-4" type="submit">Search</button>
+          </div>
+          {% for error in form.document.errors %}<div class="text-danger small px-2 pt-2">{{ error }}</div>{% endfor %}
+          <div class="small muted px-2 pt-2">PDF, DOCX, TXT, MD, CSV, JSON, HTML, XML, or XLSX · up to 10 MB</div>
+        </form>
+      </div>
+    </div>
+    <p class="text-center small muted mt-3">Documents are used to identify relevant office records and are not saved. Scanned documents need OCR.</p>
+  </div>
+  </div>
+  {% endblock %}
