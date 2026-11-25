@@ -1,18 +1,8 @@
 {
-  "buildCommand": "python manage.py collectstatic --noinput",
-  "builds": [
-    {
-      "src": "student_ai/wsgi.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb"
-      }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "student_ai/wsgi.py": {
+      "maxDuration": 60
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "student_ai/wsgi.py"
-    }
-  ]
+  }
 }

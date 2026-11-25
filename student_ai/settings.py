@@ -6,11 +6,13 @@ from django.contrib.messages import constants as message_constants
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
-
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1,studentdetails-tawny.vercel.app,.vercel.app",
+    ).split(",")
     if host.strip()
 ]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
@@ -19,7 +21,10 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    for origin in os.environ.get(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "https://studentdetails-tawny.vercel.app,https://*.vercel.app",
+    ).split(",")
     if origin.strip()
 ]
 if RENDER_EXTERNAL_HOSTNAME:
@@ -79,3 +84,4 @@ MESSAGE_TAGS = {message_constants.ERROR: "danger"}
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_TIMEOUT = int(os.environ.get("OPENAI_TIMEOUT", "60"))
+WSGI_APPLICATION = 'student_ai.wsgi.application'
