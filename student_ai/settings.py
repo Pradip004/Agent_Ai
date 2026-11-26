@@ -57,10 +57,21 @@ TEMPLATES = [{
     ]},
 }]
 
+database_url = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+    or os.environ.get("POSTGRES_PRISMA_URL")
+)
+if os.environ.get("VERCEL") and not database_url:
+    raise RuntimeError(
+        "No persistent database is configured for Vercel. Set DATABASE_URL "
+        "to a PostgreSQL connection string in the Vercel project settings."
+    )
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
+        default=database_url or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=0 if os.environ.get("VERCEL") else 600,
+        ssl_require=bool(database_url and database_url.startswith("postgres")),
     )
 }
 
